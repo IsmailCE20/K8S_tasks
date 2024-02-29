@@ -1,0 +1,290 @@
+
+
+drwxrwxrwx 1 ismail ismail 4096 Feb 20 13:04 ./
+drwxrwxrwx 1 ismail ismail 4096 Feb 22 12:37 ../
+-rwxrwxrwx 1 ismail ismail  494 Feb 19 17:47 eks-cube-cluster.yaml*
+root@DESKTOP-SQGRBLG:/mnt/e/Kubernetes/EKS# eksctl create cluster -f eks-cube-cluster.yaml
+2024-02-28 14:29:02 [ℹ]  eksctl version 0.171.0
+2024-02-28 14:29:02 [ℹ]  using region us-east-1
+2024-02-28 14:29:03 [ℹ]  setting availability zones to [us-east-1f us-east-1b]
+2024-02-28 14:29:03 [ℹ]  subnets for us-east-1f - public:192.168.0.0/19 private:192.168.64.0/19
+2024-02-28 14:29:03 [ℹ]  subnets for us-east-1b - public:192.168.32.0/19 private:192.168.96.0/19
+2024-02-28 14:29:05 [ℹ]  nodegroup "eks-cube-ismail-ng-01" will use "ami-093115ce2e0c7ddfd" [AmazonLinux2/1.27]
+2024-02-28 14:29:05 [ℹ]  using SSH public key "/root/.ssh/id_rsa.pub" as "eksctl-eks-cube-ismail-nodegroup-eks-cube-ismail-ng-01-20:b3:fb:e5:f3:d2:bf:2e:94:ad:df:50:99:cb:18:eb"
+2024-02-28 14:29:07 [ℹ]  nodegroup "eks-cube-ismail-ng-02" will use "ami-093115ce2e0c7ddfd" [AmazonLinux2/1.27]
+==============================================================================================
+root@DESKTOP-SQGRBLG:/mnt/e/Kubernetes/EKS# aws eks --region us-east-1 update-kubeconfig --name eks-cube-ismail
+Updated context arn:aws:eks:us-east-1:792614013723:cluster/eks-cube-ismail in /root/.kube/config
+root@DESKTOP-SQGRBLG:/mnt/e/Kubernetes/EKS#
+
+==============================================================================================
+root@DESKTOP-SQGRBLG:/mnt/e/Kubernetes/EKS# kubectl get nodes
+NAME                             STATUS   ROLES    AGE   VERSION
+ip-192-168-16-166.ec2.internal   Ready    <none>   14m   v1.27.9-eks-5e0fdde
+ip-192-168-27-37.ec2.internal    Ready    <none>   13m   v1.27.9-eks-5e0fdde
+ip-192-168-39-134.ec2.internal   Ready    <none>   14m   v1.27.9-eks-5e0fdde
+ip-192-168-63-233.ec2.internal   Ready    <none>   13m   v1.27.9-eks-5e0fdde
+root@DESKTOP-SQGRBLG:/mnt/e/Kubernetes/EKS#
+
+================================================================================================================================
+
+2. TO CREATE AN IAM OIDC IDENTITY PROVIDER FOR YOUR CLUSTER WITH EKSCTL
+
+2.1. Determine whether you have an existing IAM OIDC provider for your cluster. Retrieve your cluster's OIDC provider ID and store it in a variable.
+
+root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# oidc_id=$(aws eks describe-cluster --name eks-cube-ismail --que
+ry "cluster.identity.oidc.issuer" --output text | cut -d '/' -f 5)
+
+----------------------------------------------------------------------------------------------------------------------------
+2.2. Determine whether an IAM OIDC provider with your cluster's ID is already in your account.
+
+root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# aws iam list-open-id-connect-providers | grep $oidc_id | cut -d "/" -f4
+----------------------------------------------------------------------------------------------------------------------------
+2.3. If output is returned, then you already have an IAM OIDC provider for your cluster and you can skip the next step. If no output is returned, then you must create an IAM OIDC provider for your cluster.
+
+aws iam list-open-id-connect-providers | grep $oidc_id | cut -d "/" -f4
+A45A4FA80D650DF0BF737384C3902E7A"
+
+
+----------------------------------------------------------------------------------------------------------------------------
+2.4. Create an IAM OIDC identity provider for your cluster with the following command. Replace eks-cube-dev with your own value.
+
+root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# eksctl utils associate-iam-oidc-provider --cluster eks-cube-ismail --approve
+2024-02-28 16:07:16 [ℹ]  will create IAM Open ID Connect provider for cluster "eks-cube-ismail" in "us-east-1"
+2024-02-28 16:07:17 [✔]  created IAM Open ID Connect provider for cluster "eks-cube-ismail" in "us-east-1"
+
+----------------------------------------------------------------------------------------------------------------------------
+2.5. Check again whether an IAM OIDC provider with your cluster's ID is created in your account.
+
+aws iam list-open-id-connect-providers | grep $oidc_id | cut -d "/" -f4
+A45A4FA80D650DF0BF737384C3902E7A"
+
+
+------------------------------------------------------------------------------
+[3.] CREATE A SERVICE ACCOUNT POLICY, AND ROLE-BASED ACCESS CONTROL (RBAC) POLICIES
+	  1. To download an IAM policy that allows the AWS Load Balancer Controller to make calls to AWS APIs on your behalf, run the following command:
+
+root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# curl -o iam_policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load�balancer-controller/v2.4.4/docs/install/iam_policy.json
+
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100    90  100    90    0     0    215      0 --:--:-- --:--:-- --:--:--   215
+root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS#
+----------------------------------------------------------------------------------------------------------------------------	
+[5.] AMAZON EFS CSI DYNAMIC PROVISIONING
+	1. Download the IAM policy document
+	curl -S https://raw.githubusercontent.com/kubernetes-sigs/aws-efs-csi-driver/v1.2.0/docs/iam-policy-example.json -o iam-policy.json
+	
+	Sol:-
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# curl -S https://raw.githubusercontent.com/kubernetes-sigs/aws-efs-csi-driver/v1.2.0/docs/iam-policy-example.json -o iam-policy.json
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   732  100   732    0     0   1431      0 --:--:-- --:--:-- --:--:--  1432
+-------------------------------------------------------------------------------------------------------------------------------	
+	#2. Create an IAM policy
+		
+	root@DESKTOP-SQGRBLG:/mnt/e/Kubernetes/EKS# aws iam create-policy \
+--policy-name EFSCSIControllerIAMPolicy \
+--policy-document file://iam-policy.json
+{
+    "Policy": {
+        "PolicyName": "EFSCSIControllerIAMPolicy",
+        "PolicyId": "ANPA3RC32BMN2VDOKBGDC",
+        "Arn": "arn:aws:iam::792614013723:policy/EFSCSIControllerIAMPolicy",
+        "Path": "/",
+        "DefaultVersionId": "v1",
+        "AttachmentCount": 0,
+        "PermissionsBoundaryUsageCount": 0,
+        "IsAttachable": true,
+        "CreateDate": "2024-02-29T07:12:57Z",
+        "UpdateDate": "2024-02-29T07:12:57Z"
+    }
+}
+root@DESKTOP-SQGRBLG:/mnt/e/Kubernetes/EKS#
+-----------------------------------------------------------------------------------------------------------------------------
+	#3. Create a Kubernetes service account 
+	eksctl create iamserviceaccount \
+    --cluster=eks-cube-ismail \
+    --region=us-east-1 \
+    --namespace=kube-system \
+    --name=efs-csi-controller-sa \
+    --override-existing-serviceaccounts \
+    --attach-policy-arn=arn:aws:iam::792614013723:policy/EFSCSIControllerIAMPolicy \
+    --approve
+	
+	Sol:-
+	root@DESKTOP-SQGRBLG:/mnt/e/Kubernetes/EKS# eksctl create iamserviceaccount \
+    --cluster=eks-cube-ismail \
+    --region=us-east-1 \
+    --namespace=kube-system \
+    --name=efs-csi-controller-sa \
+    --override-existing-serviceaccounts \
+    --attach-policy-arn=arn:aws:iam::792614013723:policy/EFSCSIControllerIAMPolicy \
+    --approve
+	2024-02-29 12:50:22 [ℹ]  1 iamserviceaccount (kube-system/efs-csi-controller-sa) was included (based on the include/exclude rules)
+	2024-02-29 12:50:22 [!]  metadata of serviceaccounts that exist in Kubernetes will be updated, as --override-existing-serviceaccounts was set
+	2024-02-29 12:50:22 [ℹ]  1 task: {
+    2 sequential sub-tasks: {
+        create IAM role for serviceaccount "kube-system/efs-csi-controller-sa",
+        create serviceaccount "kube-system/efs-csi-controller-sa",
+    } }2024-02-29 12:50:22 [ℹ]  building iamserviceaccount stack "eksctl-eks-cube-ismail-addon-iamserviceaccount-kube-system-efs-csi-controller-sa"
+	2024-02-29 12:50:22 [ℹ]  deploying stack "eksctl-eks-cube-ismail-addon-iamserviceaccount-kube-system-efs-csi-controller-sa"
+	2024-02-29 12:50:23 [ℹ]  waiting for CloudFormation stack "eksctl-eks-cube-ismail-addon-iamserviceaccount-kube-system-efs-csi-controller-sa"
+	2024-02-29 12:50:54 [ℹ]  waiting for CloudFormation stack "eksctl-eks-cube-ismail-addon-iamserviceaccount-kube-system-efs-csi-controller-sa"
+	2024-02-29 12:50:56 [ℹ]  created serviceaccount "kube-system/efs-csi-controller-sa"
+	root@DESKTOP-SQGRBLG:/mnt/e/Kubernetes/EKS#
+-----------------------------------------------------------------------------------------------------------------------------	
+	#4. To verify that the new service role is created, run one of the following commands:
+	sol:
+	root@DESKTOP-SQGRBLG:/mnt/e/Kubernetes/EKS# eksctl get iamserviceaccount --cluster eks-cube-ismail --name efs-csi-controller
+-sa --namespace kube-system
+	NAMESPACE       NAME                    ROLE ARN
+	kube-system     efs-csi-controller-sa   arn:aws:iam::792614013723:role/eksctl-eks-cube-ismail-addon-iamserviceaccoun-Role1-8jgUp6DVlEpt
+	root@DESKTOP-SQGRBLG:/mnt/e/Kubernetes/EKS#
+-------------------------------------------------------------------------------------------------------------------------------
+	#5. Now install AWS EFS Storage Controller driver. 
+	
+	
+	
+	
+	Sol:-
+	helm repo add aws-efs-csi-driver https://kubernetes-sigs.github.io/aws-efs-csi-driver
+"aws-efs-csi-driver" has been added to your repositories
+
+helm upgrade -i aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver --namespace kube-system --set image.repository=602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/aws-efs-csi-driver --set controller.serviceAccount.create=false --set controller.serviceAccount.name=efs-csi-controller-sa
+
+Release "aws-efs-csi-driver" does not exist. Installing it now.
+NAME: aws-efs-csi-driver
+LAST DEPLOYED: Thu Feb 29 14:59:39 2024
+NAMESPACE: kube-system
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+
+-------------------------------------------------------------------------------------------------------------------------------
+	6.To verify that aws-efs-csi-driver has started, run: 
+    kubectl get pod -n kube-system -l "app.kubernetes.io/name=aws-efs-csi-driver,app.kubernetes.io/instance=aws-efs-csi-driver"
+	root@DESKTOP-SQGRBLG:/usr/sbin# kubectl get pod -n kube-system -l "app.kubernetes.io/name=aws-efs-csi-driver,app.kubernetes.io/instance=aws-efs-csi-driver"
+	NAME                                  READY   STATUS    RESTARTS   AGE
+	efs-csi-controller-598bf64f56-s5pxj   3/3     Running   0          32s
+	efs-csi-controller-598bf64f56-vfqts   3/3     Running   0          32s
+	efs-csi-node-jlzvp                    3/3     Running   0          33s
+	efs-csi-node-k6qdz                    3/3     Running   0          33s
+	efs-csi-node-mszfq                    3/3     Running   0          33s
+	efs-csi-node-rlxm7                    3/3     Running   0          33s
+	root@DESKTOP-SQGRBLG:/usr/sbin#
+-------------------------------------------------------------------------------------------------------------------------------
+	After creating EFS system in aws consol
+
+	Search EFS 	----- > File System ----- > Create EFS under EKS VPC . 
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# vim pv.yaml
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# vim pvc.yaml
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# vim pod.yaml
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# kubectl apply -f pv.yaml
+	persistentvolume/efs-pv created
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS#
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# kubectl get pv efs-pv
+	NAME     CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   REASON   AGE
+	efs-pv   5Gi        RWO            Retain           Available                                   16m
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS#
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# kubectl apply -f pvc.yaml
+	persistentvolumeclaim/efs-claim created
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# kubectl get pv efs-pv
+	NAME     CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM               STORAGECLASS   REASON   AGE
+	efs-pv   5Gi        RWO            Retain           Bound    default/efs-claim                           18m
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS#
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# kubectl get pvc efs-claim
+	NAME        STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+	efs-claim   Bound    efs-pv   5Gi        RWO                           2m7s
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS#
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# kubectl apply -f pod.yaml
+	pod/efs-app created
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS#
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS# kubectl exec -ti efs-app -- tail -f /data/out.txt
+	Thu Feb 29 12:20:49 UTC 2024
+	Thu Feb 29 12:20:51 UTC 2024
+	Thu Feb 29 12:20:53 UTC 2024
+	Thu Feb 29 12:20:55 UTC 2024
+	Thu Feb 29 12:20:57 UTC 2024
+	Thu Feb 29 12:20:59 UTC 2024
+	Thu Feb 29 12:21:01 UTC 2024
+	Thu Feb 29 12:21:03 UTC 2024root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS#
+
+
+
+-------------------------------------------------------------------------------------------------------------------------------
+
+	In EFS security Group  ----- >  Allow all traffic from EKS VPC 
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# ll
+	total 0
+	drwxrwxrwx 1 ismail ismail 4096 Feb 29 18:00 ./
+	drwxrwxrwx 1 ismail ismail 4096 Feb 29 17:43 ../
+	-rwxrwxrwx 1 ismail ismail  416 Feb 29 18:01 pod.yaml*
+	-rwxrwxrwx 1 ismail ismail  196 Feb 29 18:00 pvc_pod_1.yaml*
+	-rwxrwxrwx 1 ismail ismail  210 Feb 29 17:58 sc.yaml*
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# 
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# kubectl apply -f sc.yaml
+	storageclass.storage.k8s.io/efs-sc created
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# kubectl get sc
+	NAME            PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+	efs-sc          efs.csi.aws.com         Delete          Immediate              false                  42s
+	gp2 (default)   kubernetes.io/aws-ebs   Delete          WaitForFirstConsumer   false                  6h8m
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class#
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# kubectl apply -f pvc_pod_1.yaml
+	persistentvolumeclaim/efs-claim-1 created
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# kubectl get pvc
+	NAME          STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+	efs-claim     Bound     efs-pv   5Gi        RWO                           118m
+	efs-claim-1   Pending                                      efs-sc         34s
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# kubectl apply -f sc.yaml
+	storageclass.storage.k8s.io/efs-sc created
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# kubectl apply -f pvc_pod_1.yaml
+	persistentvolumeclaim/efs-claim-1 created
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# kubectl apply -f pod.yaml
+	pod/efs-app-1 created
+
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# kubectl get pod
+	NAME        READY   STATUS    RESTARTS   AGE
+	efs-app-1   1/1     Running   0          16s
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# kubectl get pvc
+	NAME          STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+	efs-claim     Bound    efs-pv                                     5Gi        RWO                           156m
+	efs-claim-1   Bound    pvc-88231c86-b9a0-4439-bcae-bb2b7c6a6d16   5Gi        RWX            efs-sc         3m43s
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class#
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# kubectl get pv | grep efs-sc
+	pvc-88231c86-b9a0-4439-bcae-bb2b7c6a6d16   5Gi        RWX            Delete           Bound    default/efs-claim-1   efs-sc                  6m9s
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class#
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# kubectl get pod
+	NAME        READY   STATUS    RESTARTS   AGE
+	efs-app-1   1/1     Running   0          6m46s
+
+	root@DESKTOP-SQGRBLG:/mnt/e/K8S_assignments/assignment9/EFS/Storage-Class# kubectl exec -it efs-app-1 -- tail -f /data/out
+	Thu Feb 29 13:15:34 UTC 2024
+	Thu Feb 29 13:15:39 UTC 2024
+	Thu Feb 29 13:15:44 UTC 2024
+	Thu Feb 29 13:15:49 UTC 2024
+	Thu Feb 29 13:15:54 UTC 2024
+	Thu Feb 29 13:15:59 UTC 2024
+	Thu Feb 29 13:16:04 UTC 2024
+	Thu Feb 29 13:16:09 UTC 2024
+	Thu Feb 29 13:16:14 UTC 2024
+	Thu Feb 29 13:16:19 UTC 2024
+
+
+
+
+
